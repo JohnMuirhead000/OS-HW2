@@ -5,43 +5,71 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdbool.h>
 #define BUFSIZE 1024
 
 int main(int argc, char *argv[])
 {
-    char buf[BUFSIZE];
-    int fdIn, cnt, i;
-    char desired = *argv[2];
-
+    int fdIn, i, cnt;
+    char desired = *argv[2];   
     int counter = 0;
+    int buffSize = BUFSIZE;
 
-    if (argc < 2) {
-	fdIn = 0;  /* just read from stdin */
+    bool runRead = true;
+
+
+    //This code does what we need to do based on arg 4
+    if (argc == 4)
+    {
+        if (!(strcmp(argv[3],"mmap")))
+        {
+            runRead = false;
+        }
+        else
+        {
+            buffSize = atoi(argv[3]);
+            if (buffSize > 8192)
+            {
+                printf("sorry friend, we're setting it to 8192\n");
+                buffSize = 8192;
+
+            }
+        }
     }
-    // arg3 = * argv[3]
-    // if (argv == 3)
-    // {
-	//     //test if its an int 
-    // }
-    else if ((fdIn = open(argv[1], O_RDONLY)) < 0) {
+    char buf[buffSize];
+
+
+    if (argc < 2) 
+    { fdIn = 0;  /* just read from stdin */ }
+    else if ((fdIn = open(argv[1], O_RDONLY)) < 0) 
+    {
 	fprintf(stderr, "file open\n");
 	exit(1);
     }
-    copy input to stdout
 
     //Run this code if we are reading
-    while ((cnt = read(fdIn, buf, BUFSIZE)) > 0) 
+    if (runRead)
     {
-	    int size = sizeof(buf);
-	    for (int i =0; i < size; i++)
-	    {
-		    if (buf[i]==desired)
-		    {
-			    counter++;
-		    }
-	    }
-	    
+        while ((cnt=read(fdIn, buf, buffSize)) > 0) 
+        {
+		printf("The cnt is %d\n", cnt);
+            	int size = sizeof(buf);
+            	printf("the size of the buff is %d\n",size);
+	        for (int i = 0; i < cnt; i++)
+	        {
+		        if (buf[i]==desired)
+		        {
+			        counter++;
+		        }   
+	        }
+        }
+    } 
+    else /* we will be using the mmap code */
+    {
+        //Code for mmap
+        printf("MMAP CODE HERE BABY\n");
     }
+
     if (fdIn > 0)
         close(fdIn);
     printf("occurebnces is %i\n", counter);
