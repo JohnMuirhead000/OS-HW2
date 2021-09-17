@@ -8,6 +8,34 @@
 #include <stdbool.h>
 #define BUFSIZE 1024
 
+void readFunction(int buffSize, int fdIn, int* counter, char desired);
+void readFunction(int buffSize, int fdIn, int* counter, char desired)
+{
+    char buf[buffSize];
+    int cnt;
+    while ((cnt=read(fdIn, buf, buffSize)) > 0)
+    { 
+        int size = sizeof(buf);
+		printf("The cnt is %d\n", cnt);
+        printf("the size of the buff is %d\n",size);
+	    for (int i = 0; i < cnt; i++)
+	    {
+		    if (buf[i]==desired)
+		    {
+			    (*counter)++;
+			    printf("The counter is now %d\n",*counter);
+		    }   
+	    }
+    }
+}
+
+
+void mmapFunction();
+void mmapFunction()
+{
+
+}
+
 int main(int argc, char *argv[])
 {
     int fdIn, i, cnt;
@@ -36,7 +64,6 @@ int main(int argc, char *argv[])
             }
         }
     }
-    char buf[buffSize];
 
 
     if (argc < 2) 
@@ -50,19 +77,8 @@ int main(int argc, char *argv[])
     //Run this code if we are reading
     if (runRead)
     {
-        while ((cnt=read(fdIn, buf, buffSize)) > 0) 
-        {
-		printf("The cnt is %d\n", cnt);
-            	int size = sizeof(buf);
-            	printf("the size of the buff is %d\n",size);
-	        for (int i = 0; i < cnt; i++)
-	        {
-		        if (buf[i]==desired)
-		        {
-			        counter++;
-		        }   
-	        }
-        }
+        readFunction(buffSize, fdIn, &counter, desired);
+
     } 
     else /* we will be using the mmap code */
     {
@@ -70,7 +86,9 @@ int main(int argc, char *argv[])
         printf("MMAP CODE HERE BABY\n");
     }
 
-    if (fdIn > 0)
+    if (fdIn > 0){
         close(fdIn);
+    }
+
     printf("occurebnces is %i\n", counter);
 }
