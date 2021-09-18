@@ -53,14 +53,42 @@ void mmapFunction(int fdIn, char *pchFile, char desired, int* counter)
         {
             (*counter)++;
         }
-	pchCopy++;
+	    pchCopy++;
     }
 
-    if(munmap(pchFile, sb.st_size) < 0){
-	perror("Could not uPOOP memory");
+    if(munmap(pchFile, sb.st_size) < 0)
+    {
+	perror("Could not unmap memory");
 	exit(1);
     }
 }
+
+void forkFunction(int target);
+void forkFunction(int target)
+{
+    int pIndex = 1;
+
+    while(pIndex < target)
+    {
+        int currentProcess = fork();
+        if (currentProcess < 0)
+        {
+            printf("fork error\n");
+            exit(1);
+        }
+
+        if (currentProcess == 0)
+        {
+            //child process, index by 1 and check the loop again
+            pIndex++;
+        }else{
+            //parent prcoess, break out of the loop, pIndex should be what we want, to some computation
+            break;
+        }
+    }
+    printf("The pIndex of this process is %d\n",pIndex);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -68,8 +96,11 @@ int main(int argc, char *argv[])
     char desired = *argv[2];   
     int counter = 0;
     int buffSize = BUFSIZE;
+    int children;
 
     bool runRead = true;
+    bool runMmap = false;
+    bool runFork = false;
 
 
     //This code does what we need to do based on arg 4
@@ -77,7 +108,28 @@ int main(int argc, char *argv[])
     {
         if (!(strcmp(argv[3],"mmap")))
         {
-            runRead = false;
+            runMmap = true;
+	        runRead = false;
+            runFork = false; /*should already be false*/
+        }
+        else if (argv[3][0] == 'p')
+        {
+            printf("time to run w/ parallelization \n");
+            runMmap = false; /*should already be false*/
+	        runRead = false;
+            runFork = true;
+            children = atoi(argv[3]+1);
+            if (children > 16)
+            {
+                children = 16;
+                printf("sorry bud, the max is 16\n");
+            }
+            if (children < 1)
+            {
+                children = 1;
+                printf("Must be at least 1\n");
+            }
+            printf("we ahve %d children\n",children);
         }
         else
         {
@@ -88,10 +140,12 @@ int main(int argc, char *argv[])
                 buffSize = 8192;
 
             }
+	        runRead = true;
+	        runMmap = false; /*should already be false*/
+            runFork = false; /*should already be false*/
         }
     }
-
-
+    
     if (argc < 2) 
     { fdIn = 0;  /* just read from stdin */ }
     else if ((fdIn = open(argv[1], O_RDONLY)) < 0) 
@@ -104,18 +158,22 @@ int main(int argc, char *argv[])
     if (runRead)
     {
         readFunction(buffSize, fdIn, &counter, desired);
+        printf("occurebnces is %i\n", counter);
 
     } 
-    else /* we will be using the mmap code */
+    else if (runMmap)
     {
         char* pchFile;
         mmapFunction(fdIn,pchFile, desired, &counter);
         printf("MMAP CODE HERE BABY\n");
+        printf("occurebnces is %i\n", counter);
+    } else if (runFork)
+    {
+        //run forkFunction
+        printf("FORK CODE HERE BABY\n");
     }
 
     if (fdIn > 0){
         close(fdIn);
     }
-
-    printf("occurebnces is %i\n", counter);
 }
