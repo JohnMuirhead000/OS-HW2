@@ -31,21 +31,23 @@ void readFunction(int buffSize, int fdIn, int* counter, char desired)
     }
 } 
 
-
 void mmapFunction(int fdIn, char *pchFile, char desired, int* counter);
 void mmapFunction(int fdIn, char *pchFile, char desired, int* counter)
 {
     struct stat sb;
-    if(fstat(fdIn, &sb) < 0){
+    if(fstat(fdIn, &sb) < 0)
+    {
 	perror("Could not stat file to obtain its size");
 	exit(1);
     }
 
     if ((pchFile = (char *) mmap (NULL, sb.st_size, PROT_READ, MAP_SHARED, fdIn, 0)) 
-	== (char *) -1)	{
+	== (char *) -1)	
+    {
 	perror("Could not mmap file");
 	exit (1);
     }
+
     char* pchCopy = pchFile;
     for (int i = 0; i < sb.st_size; i++)
     {
@@ -63,11 +65,44 @@ void mmapFunction(int fdIn, char *pchFile, char desired, int* counter)
     }
 }
 
-void forkFunction(int target);
-void forkFunction(int target)
+void forkFunction(int target, int fdIn, char desired, int* counter);
+void forkFunction(int target, int fdIn, char desired, int* counter)
 {
-    int pIndex = 1;
+    struct stat sb;
+    if(fstat(fdIn, &sb) < 0)
+    {
+	perror("Could not stat file to obtain its size");
+	exit(1);
+    }
 
+    int pages = (sb.st_size / 4096) + 1;
+    int pagesPerIteration[2][target];
+    if(target > pages)
+    {
+        printf("Sorry frined, the file is not large enought to run w/ %d processes\n", target);
+        exit(1);
+    } 
+    else 
+    {   
+        for (int i = 0; i < target; i++)
+        {
+            pagesPerIteration[0][i] = i+1;
+            pagesPerIteration[1][i] = 0;
+        }
+        int iteration = 0;
+        while (pages != 0)
+        {
+            pagesPerIteration[1][iteration % target] = pagesPerIteration[1][iteration % target] + 1;
+            iteration++;
+            pages--;
+        }
+    }
+    /*
+    BOOM, now pagesPerIteration is a 2 x target matirx with each column holds what number it is
+    followed by the number of pages it should read. For anyone who may be reading this, i did think 
+    of this mysef. 
+    */
+    int pIndex = 1;
     while(pIndex < target)
     {
         int currentProcess = fork();
@@ -86,7 +121,45 @@ void forkFunction(int target)
             break;
         }
     }
+
     printf("The pIndex of this process is %d\n",pIndex);
+
+    printf("the size of the file is %d\n", sb.st_size);
+    char *pchFile;
+
+    //this line calculates the size of what we'll be mapping for this process
+    int size = (4096) * pagesPerIteration[1][pIndex - 1];
+    //this code calcualtes the buffer into the fd we'll start reading from
+    int buffer = 0;
+    for (int i = 0; i < (pIndex - 1); i++)
+    {
+        buffer = buffer + (pagesPerIteration[1][i]) * 4096;
+
+    }
+    printf("the buffer on this lil dog is goung to be %d \n", buffer);
+    if ((pchFile = (char *) mmap (NULL, size, PROT_READ, MAP_PRIVATE, fdIn, buffer))
+     == (char *) -1)	
+    {
+	perror("Could not mmap file");
+	exit (1);
+    }
+    char* pchCopy = pchFile;
+    for (int i = 0; i < (sb.st_size/target); i++)
+    {
+        if (*pchCopy == desired)
+        {
+            (*counter)++;
+        }
+	    pchCopy++;
+    }
+    if(munmap(pchFile, sb.st_size/sb.st_size) < 0)
+    {
+	perror("Could not unmap memory");
+	exit(1);
+    }
+
+    printf("Process number %d, found %d instances of the character\n", pIndex, *counter);
+    
 }
 
 
@@ -170,7 +243,9 @@ int main(int argc, char *argv[])
     } else if (runFork)
     {
         //run forkFunction
+        char* pchFile;
         printf("FORK CODE HERE BABY\n");
+        forkFunction(children, fdIn, desired, &counter);
     }
 
     if (fdIn > 0){
