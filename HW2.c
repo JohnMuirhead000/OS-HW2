@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
+#include <sys/mman.h>
 #define BUFSIZE 1024
 
 void readFunction(int buffSize, int fdIn, int* counter, char desired);
@@ -22,18 +24,42 @@ void readFunction(int buffSize, int fdIn, int* counter, char desired)
 	    {
 		    if (buf[i]==desired)
 		    {
-			    (*counter)++;
+			    ((*counter)++);
 			    printf("The counter is now %d\n",*counter);
 		    }   
 	    }
     }
-}
+} 
 
 
-void mmapFunction();
-void mmapFunction()
+void mmapFunction(int fdIn, char *pchFile, char desired, int* counter);
+void mmapFunction(int fdIn, char *pchFile, char desired, int* counter)
 {
+    struct stat sb;
+    if(fstat(fdIn, &sb) < 0){
+	perror("Could not stat file to obtain its size");
+	exit(1);
+    }
 
+    if ((pchFile = (char *) mmap (NULL, sb.st_size, PROT_READ, MAP_SHARED, fdIn, 0)) 
+	== (char *) -1)	{
+	perror("Could not mmap file");
+	exit (1);
+    }
+    char* pchCopy = pchFile;
+    for (int i = 0; i < sb.st_size; i++)
+    {
+        if (*pchCopy == desired)
+        {
+            (*counter)++;
+        }
+	pchCopy++;
+    }
+
+    if(munmap(pchFile, sb.st_size) < 0){
+	perror("Could not uPOOP memory");
+	exit(1);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -82,7 +108,8 @@ int main(int argc, char *argv[])
     } 
     else /* we will be using the mmap code */
     {
-        //Code for mmap
+        char* pchFile;
+        mmapFunction(fdIn,pchFile, desired, &counter);
         printf("MMAP CODE HERE BABY\n");
     }
 
