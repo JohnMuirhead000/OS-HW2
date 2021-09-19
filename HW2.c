@@ -77,8 +77,12 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
     int pagesPerIteration[2][target];
     if(target > pages)
     {
-        printf("Sorry frined, the file is not large enought to run w/ %d processes\n", target);
-        exit(1);
+        target = pages; 
+        /* 
+          if we ony have 5 pages in the file, we cant analyzie that w/ 16 process because
+          the smallest buffer possible is 1 page. soooo, if we have more processes desired than, 
+          we will just continue fowars as if ony the number of request pages processes was request.
+        */
     } 
     else 
     {   
@@ -125,14 +129,6 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
         buffer = buffer + (pagesPerIteration[1][i]) * 4096;
 
     }
-    /*
-    HOLD ON! we have an exception. The last page we do not want to count as a full page. 
-    The buffer can stay the same, ofc, but we will actually be mapping slightly less than 
-    'size' because it has counted the last PARTIAL page as a full page. Lets change that:
-    */
-    //if (pIndex == target)
-
-
     if ((pchFile = (char *) mmap (NULL, size, PROT_READ, MAP_PRIVATE, fdIn, buffer))
      == (char *) -1)	
     {
