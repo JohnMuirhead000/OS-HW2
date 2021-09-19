@@ -18,18 +18,16 @@ void readFunction(int buffSize, int fdIn, int* counter, char desired)
     while ((cnt=read(fdIn, buf, buffSize)) > 0)
     { 
         int size = sizeof(buf);
-		printf("The cnt is %d\n", cnt);
-        printf("the size of the buff is %d\n",size);
 	    for (int i = 0; i < cnt; i++)
 	    {
 		    if (buf[i]==desired)
 		    {
 			    ((*counter)++);
-			    printf("The counter is now %d\n",*counter);
 		    }   
 	    }
     }
 } 
+
 
 void mmapFunction(int fdIn, char *pchFile, char desired, int* counter);
 void mmapFunction(int fdIn, char *pchFile, char desired, int* counter)
@@ -97,11 +95,6 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
             pages--;
         }
     }
-    /*
-    BOOM, now pagesPerIteration is a 2 x target matirx with each column holds what number it is
-    followed by the number of pages it should read. For anyone who may be reading this, i did think 
-    of this mysef. 
-    */
     int pIndex = 1;
     while(pIndex < target)
     {
@@ -121,10 +114,6 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
             break;
         }
     }
-
-    printf("The pIndex of this process is %d\n",pIndex);
-
-    printf("the size of the file is %d\n", sb.st_size);
     char *pchFile;
 
     //this line calculates the size of what we'll be mapping for this process
@@ -136,7 +125,14 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
         buffer = buffer + (pagesPerIteration[1][i]) * 4096;
 
     }
-    printf("the buffer on this lil dog is goung to be %d \n", buffer);
+    /*
+    HOLD ON! we have an exception. The last page we do not want to count as a full page. 
+    The buffer can stay the same, ofc, but we will actually be mapping slightly less than 
+    'size' because it has counted the last PARTIAL page as a full page. Lets change that:
+    */
+    //if (pIndex == target)
+
+
     if ((pchFile = (char *) mmap (NULL, size, PROT_READ, MAP_PRIVATE, fdIn, buffer))
      == (char *) -1)	
     {
@@ -144,7 +140,7 @@ void forkFunction(int target, int fdIn, char desired, int* counter)
 	exit (1);
     }
     char* pchCopy = pchFile;
-    for (int i = 0; i < (sb.st_size/target); i++)
+    for (int i = 0; i < (size); i++)
     {
         if (*pchCopy == desired)
         {
@@ -187,7 +183,6 @@ int main(int argc, char *argv[])
         }
         else if (argv[3][0] == 'p')
         {
-            printf("time to run w/ parallelization \n");
             runMmap = false; /*should already be false*/
 	        runRead = false;
             runFork = true;
@@ -202,7 +197,7 @@ int main(int argc, char *argv[])
                 children = 1;
                 printf("Must be at least 1\n");
             }
-            printf("we ahve %d children\n",children);
+            printf("we ahve %d children\n\n",children);
         }
         else
         {
@@ -238,13 +233,11 @@ int main(int argc, char *argv[])
     {
         char* pchFile;
         mmapFunction(fdIn,pchFile, desired, &counter);
-        printf("MMAP CODE HERE BABY\n");
         printf("occurebnces is %i\n", counter);
     } else if (runFork)
     {
         //run forkFunction
         char* pchFile;
-        printf("FORK CODE HERE BABY\n");
         forkFunction(children, fdIn, desired, &counter);
     }
 
